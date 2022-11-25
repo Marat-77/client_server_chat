@@ -28,7 +28,8 @@
 # Принудительно открыть файл в формате Unicode и вывести его содержимое.
 
 import subprocess
-
+import sys
+from chardet.universaldetector import UniversalDetector
 
 def task_1():
     print('строки:')
@@ -80,25 +81,40 @@ def task_4():
 
 
 def task_5(domain: str, c: int = 4):
-    # в ubuntu команда ping по-умолчанию работает пока не остановишь,
-    # поэтому останавливаю после 4 ответов
-    args = ['ping', f'-c {c}', f'{domain}']
-    ping_ya = subprocess.Popen(args, stdout=subprocess.PIPE)
-    for i in ping_ya.stdout:
-        print(i.decode('utf-8').replace('\n', ''))
+    print(sys.platform)
+    if 'win' in sys.platform:
+        args = ['ping', f'{domain}']
+        ping_ya = subprocess.run(args, capture_output=True)
+        os_coding = sys.getfilesystemencoding()
+        print(ping_ya.stdout.decode(os_coding))
+    else:
+        # в ubuntu команда ping по-умолчанию работает пока не остановишь,
+        # поэтому останавливаю после 4 ответов
+        args = ['ping', f'-c {c}', f'{domain}']
+        ping_ya = subprocess.Popen(args, stdout=subprocess.PIPE)
+        for i in ping_ya.stdout:
+            print(i.decode('utf-8').replace('\n', ''))
+    # не тестировал на Маках (sys.platform='Darwin')
+    # (надо сначала найти и скачать образ для виртуалки),
+    # но надеюсь, что в POSIX-системах работает
 
 
 def task_6():
-    # str_tpl = ('сетевое программирование', 'сокет', 'декоратор')
-    file = 'test_file.txt'
-    fd = open(file, 'r')
-    print('кодировка файла:', fd.encoding, '\n')
-    fd.close()
-
-    with open(file, 'r', encoding='utf-8') as f:
-        print('содержимое файла:')
-        for row in f:
-            print(row.replace('\n', ''))
+    files = ('test_file.txt', 'test_koi8r.txt', 'test_win.txt')
+    detector = UniversalDetector()
+    for file in files:
+        detector.reset()
+        for line in open(file, 'rb'):
+            detector.feed(line)
+            if detector.done:
+                break
+        detector.close()
+        file_encoding = detector.result.get('encoding')
+        print(f'\nфайл: {file}\nкодировка:{file_encoding}')
+        with open(file, 'r', encoding=file_encoding) as f:
+            print('содержимое файла:')
+            for row in f:
+                print(row)
 
 
 if __name__ == '__main__':
