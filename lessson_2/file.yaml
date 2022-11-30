@@ -1,0 +1,11 @@
+first:
+- winter
+- spring
+- summer
+- autumn
+second: 15
+third:
+  CNY: 元
+  EUR: €
+  INR: ₹
+  RUB: ₽
