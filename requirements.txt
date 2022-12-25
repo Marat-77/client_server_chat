@@ -1,0 +1,2 @@
+# for test:
+pytest==7.2.0

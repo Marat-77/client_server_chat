@@ -4,8 +4,8 @@ import sys
 import time
 from typing import Tuple
 
-from settings import DEFAULT_PORT, MAX_PACKAGE_LENGTH, TIMEOUT
-from utils import presence_msg, send_msg, auth_user_msg, read_msg, quit_user_msg
+from client.settings import DEFAULT_PORT, MAX_PACKAGE_LENGTH, TIMEOUT
+from client.utils import presence_msg, send_msg, auth_user_msg, read_msg, quit_user_msg
 
 def get_settings() -> Tuple[str, int]:
     # вернуть кортеж address_port (addr, port)
@@ -116,6 +116,7 @@ def create_connection(address_port: Tuple[str, int]):
         print(len(income_data))
         if income_data:
             print('is income_data')
+            print(f'1/income_data: {income_data}')
             data = read_msg(income_data)
             print('124:data:\n', data)
         else:

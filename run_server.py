@@ -3,9 +3,9 @@ import os
 from socket import socket, AF_INET, SOCK_STREAM
 from typing import Tuple
 
-from settings import (DEFAULT_ADDRESS, DEFAULT_PORT,
-                      MAX_CONNECTIONS, MAX_PACKAGE_LENGTH,)
-from utils import send_msg, read_msg, presence, check_auth, quit_user
+from server.settings import (DEFAULT_ADDRESS, DEFAULT_PORT,
+                             MAX_CONNECTIONS, MAX_PACKAGE_LENGTH,)
+from server.utils import send_msg, read_msg, presence, check_auth, quit_user
 
 
 def get_settings() -> Tuple[str, int]:
@@ -44,6 +44,7 @@ def accept_connections(s: socket) -> None:
                     if data.get('action'):
                         if data.get('action') == 'authenticate':
                             res = check_auth(data.get('user'), auth_users)
+                            # print('res:', res)
                             response, user = res
                             if user:
                                 auth_users.add(user)

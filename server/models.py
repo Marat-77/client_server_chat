@@ -1,9 +1,22 @@
 import hashlib
 import sqlite3
+from typing import Union
 
-def create_db():
+from server.settings import SALT
+
+
+
+def connect_db():
     db_name = 'users.db'
     con = sqlite3.connect(db_name)
+    con.row_factory = sqlite3.Row  # +++++++++++++++++++++++++++++
+    return con
+
+
+def create_db(con):
+    # db_name = 'users.db'
+    # con = sqlite3.connect(db_name)
+    # con.row_factory = sqlite3.Row  # +++++++++++++++++++++++++++++
 
     query = 'CREATE TABLE IF NOT EXISTS "users" '
     query += '("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, '
@@ -11,12 +24,17 @@ def create_db():
     query += '"password" varchar(128) NOT NULL, '
     query += '"first_name" varchar(155) NULL, '
     query += '"last_name" varchar(155) NULL);'
-    cur = con.cursor()
-    cur.execute(query)
-    con.commit()
-    cur.close()
-    return con
 
+    try:
+        cur = con.cursor()
+        cur.execute(query)
+        con.commit()
+        return 'Ok! Table "users" created.'
+    except sqlite3.Error as err:
+        print(err)
+    finally:
+        con.close()
+    # return con
 
 def add_user(con: sqlite3.Connection, data: tuple):
     query = 'INSERT INTO "users" (username, password, first_name, last_name) '
@@ -25,11 +43,10 @@ def add_user(con: sqlite3.Connection, data: tuple):
     try:
         cur.execute(query, data)
         con.commit()
-    except sqlite3.IntegrityError as err:
+    except sqlite3.Error as err:
         print(err, f'({data} уже существует)')
     finally:
-        cur.close()
-
+        con.close()
 
 def add_new_user(con: sqlite3.Connection, data: dict):
     data = (data['username'],
@@ -41,24 +58,32 @@ def add_new_user(con: sqlite3.Connection, data: dict):
     try:
         with con:
             con.execute(query, data)
-    except sqlite3.IntegrityError as err:
+    except sqlite3.Error as err:
         print(err, f'({data[0]} уже существует)')
     finally:
         con.close()
 
 
-def get_hash_pass(password: str) -> str:
-    salt = b'\xf1\xccd7\xf1\x1dz\x8d\\\xa6/\x85\xf8\xb9-\x14\x1e\xed~\xa7\x92\n\x05\xab{$\xb5TD\xf2\xa2<'
-    key = hashlib.pbkdf2_hmac('sha256',
-                              password.encode(),
-                              salt,
-                              100000,
-                              dklen=64)
-    return key.hex()
+def get_hash_pass(password: str) -> Union[str, None]:
+    """
+    Хеширование пароля
+    :param password: пароль
+    :return: хеш пароля
+    """
+    try:
+        key = hashlib.pbkdf2_hmac('sha256',
+                                  password.encode(),
+                                  SALT,
+                                  100000,
+                                  dklen=64)
+        return key.hex()
+    except AttributeError as err:
+        print(err)
+        return
 
 
 def check_user(user_data: dict):
-    con = create_db()
+    con = connect_db()
 
     user_name = user_data.get('account_name')
     password = user_data.get('password')
@@ -67,14 +92,9 @@ def check_user(user_data: dict):
     cur.execute(query, (user_name,))
     x = cur.fetchone()
     if x:
-        pass_hash = x[0]
-        salt = b'\xf1\xccd7\xf1\x1dz\x8d\\\xa6/\x85\xf8\xb9-\x14\x1e\xed~\xa7\x92\n\x05\xab{$\xb5TD\xf2\xa2<'
-        check = hashlib.pbkdf2_hmac('sha256',
-                                    password.encode(),
-                                    salt,
-                                    100000,
-                                    dklen=64)
-        return check.hex() == pass_hash
+        pass_hash = x['password']
+        check = get_hash_pass(password)
+        return check == pass_hash
     return
 
 
@@ -89,7 +109,8 @@ def get_data() -> dict:
 
 
 def main():
-    con = create_db()
+    conn_db = connect_db()
+    con = create_db(conn_db)
 
     # ввод данных:
     # data = get_data()
@@ -101,7 +122,12 @@ def main():
     }
     data['password'] = get_hash_pass(data.get('password'))
     print(data)
-    add_new_user(con, data)
+    add_new_user(conn_db, data)
+
+def first():
+    conn_db = connect_db()
+    con = create_db(conn_db)
+    print(con)
 
 
 if __name__ == '__main__':

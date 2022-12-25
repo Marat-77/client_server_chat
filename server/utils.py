@@ -1,8 +1,8 @@
 import json
 from socket import socket
 import time
-from settings import ENCODING
-from models import check_user
+from server.settings import ENCODING
+from server.models import check_user
 
 def get_unix_time_utf() -> float:
     """
@@ -41,7 +41,7 @@ def check_auth(data: dict, auth_users: set):
         response = {
             'response': 409,
             'error': 'Someone is already connected with the given user name',
-            'time': get_unix_time_utf()
+            # 'time': get_unix_time_utf()
         }
         return response, None
     check = check_user(data)
@@ -49,13 +49,13 @@ def check_auth(data: dict, auth_users: set):
         response = {
             'response': 200,
             'alert': 'OK',
-            'time': get_unix_time_utf()
+            # 'time': get_unix_time_utf()
         }
         return response, data.get('account_name')
     response = {
         'response': 402,
         'error': 'This could be "wrong password" or "no account with that name"',
-        'time': get_unix_time_utf()
+        # 'time': get_unix_time_utf()
         }
     return response, None
 

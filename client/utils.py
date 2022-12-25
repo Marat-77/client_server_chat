@@ -1,7 +1,7 @@
 import json
 from socket import socket
 import time
-from settings import ENCODING
+from client.settings import ENCODING
 
 def get_unix_time_utf() -> float:
     """
@@ -13,16 +13,12 @@ def get_unix_time_utf() -> float:
 
 def send_msg(soc: socket, data: dict):
     jim = json.dumps(data)
-    # print(jim)
     soc.send(jim.encode(ENCODING))
-    # print(jim.encode(ENCODING))
 
 
 def read_msg(msg: bytes):
-    print('read_msg:', f'msg: {msg}')
     try:
         jim = msg.decode(ENCODING)
-        print(f'{jim = }')
         data = json.loads(jim)
         return data
     except UnicodeDecodeError as err:
