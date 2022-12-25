@@ -1,7 +1,7 @@
 import json
 from socket import socket
 import time
-from client.settings import ENCODING
+from client.settings import ENCODING, CLIENT_LOGGER
 
 def get_unix_time_utf() -> float:
     """
@@ -22,9 +22,11 @@ def read_msg(msg: bytes):
         data = json.loads(jim)
         return data
     except UnicodeDecodeError as err:
-        print(err)
+        # print(err)
+        CLIENT_LOGGER.exception(f'exception: {err}')
     except json.decoder.JSONDecodeError as err:
-        print(err)
+        # print(err)
+        CLIENT_LOGGER.exception(f'exception: {err}')
 
 
 def auth_user_msg(user: str, password: str):
