@@ -7,8 +7,10 @@ from server.settings import (DEFAULT_ADDRESS, DEFAULT_PORT,
                              MAX_CONNECTIONS, MAX_PACKAGE_LENGTH,
                              SERVER_LOGGER)
 from server.utils import send_msg, read_msg, presence, check_auth, quit_user
+from server.decorators import log
 
 
+@log
 def get_settings() -> Tuple[str, int]:
     parser = argparse.ArgumentParser(prog='run_server',
                                      description='Run server',
@@ -32,6 +34,7 @@ def get_settings() -> Tuple[str, int]:
     return args.addr, args.port
 
 
+@log
 def accept_connections(s: socket) -> None:
     auth_users = set()
     # print('connected users:', *auth_users)
@@ -87,6 +90,7 @@ def accept_connections(s: socket) -> None:
             conn.close()
 
 
+@log
 def create_socket(address_port: Tuple[str, int]) -> None:
     # Создает сокет TCP:
     s = socket(AF_INET, SOCK_STREAM)
@@ -109,6 +113,7 @@ def create_socket(address_port: Tuple[str, int]) -> None:
         s.close()
 
 
+@log
 def main():
     address_port = get_settings()
     create_socket(address_port)
