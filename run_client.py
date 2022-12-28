@@ -4,7 +4,7 @@ import sys
 import time
 from typing import Tuple
 
-from client.settings import DEFAULT_PORT, MAX_PACKAGE_LENGTH, TIMEOUT
+from client.settings import DEFAULT_PORT, MAX_PACKAGE_LENGTH, TIMEOUT, CLIENT_LOGGER
 from client.utils import presence_msg, send_msg, auth_user_msg, read_msg, quit_user_msg
 
 def get_settings() -> Tuple[str, int]:
@@ -19,13 +19,16 @@ def get_settings() -> Tuple[str, int]:
     help_msg += f'  <port>\tport 1024...65535 (default: {DEFAULT_PORT})\n'
     if len(arg_lst) == 1:
         print(usage_msg)
+        CLIENT_LOGGER.debug(f'{arg_lst}')
         exit(1)
     elif len(arg_lst) == 2 and (arg_lst[1] == '-h' or arg_lst[1] == '--help'):
         print(help_msg)
+        CLIENT_LOGGER.debug(f'{arg_lst}')
         exit(1)
     elif len(arg_lst) == 2:
         addr = arg_lst[1]
         port = DEFAULT_PORT
+        CLIENT_LOGGER.debug(f'args: {arg_lst} return: {addr}, {port}')
         return addr, port
     elif len(arg_lst) == 3:
         addr = arg_lst[1]
@@ -33,18 +36,21 @@ def get_settings() -> Tuple[str, int]:
             port = int(arg_lst[2])
             if not (1024 <= port <= 65535):
                 print(usage_msg)
+                CLIENT_LOGGER.debug(f'{arg_lst}')
                 print('введите значение port в диапазоне 1024...65535')
                 exit(1)
             return addr, port
         except ValueError as err:
             # err - для лога
             print(usage_msg)
+            CLIENT_LOGGER.debug(f'{arg_lst}')
             print('введите значение port в диапазоне 1024...65535')
             exit(1)
     else:
         print(usage_msg,
               '\nerror: unrecognized arguments:',
               ' '.join(arg_lst[1:]))
+        CLIENT_LOGGER.debug(f'{arg_lst}')
         exit(1)
 
 
@@ -81,6 +87,7 @@ def create_connection(address_port: Tuple[str, int]):
     s.settimeout(TIMEOUT)
     try:
         s.connect(address_port)
+        CLIENT_LOGGER.debug(f'Соединение с {address_port} установлено')
 
         # Пишем сообщение серверу:
 
@@ -112,13 +119,14 @@ def create_connection(address_port: Tuple[str, int]):
 
         # Получаем сообщение от сервера:
         income_data = s.recv(MAX_PACKAGE_LENGTH)
-        print(income_data)
-        print(len(income_data))
+        # print(income_data)
+        # print(len(income_data))
         if income_data:
-            print('is income_data')
-            print(f'1/income_data: {income_data}')
+            # print('is income_data')
+            # print(f'1/income_data: {income_data}')
+            CLIENT_LOGGER.debug(f'income_data: {income_data}')
             data = read_msg(income_data)
-            print('124:data:\n', data)
+            print('data:\n', data)
         else:
             print('NOT income_data')
 
@@ -132,10 +140,12 @@ def create_connection(address_port: Tuple[str, int]):
         send_msg(s, msg)
 
     except ConnectionRefusedError as err:
-        print(err)
+        # print(err)
+        CLIENT_LOGGER.exception(f'exception: {err}')
         # [Errno 111] Connection refused
     except TimeoutError as err:
-        print(err)
+        # print(err)
+        CLIENT_LOGGER.exception(f'exception: {err}')
         # timed out
     finally:
         s.close()

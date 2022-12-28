@@ -1,7 +1,7 @@
 import json
 from socket import socket
 import time
-from server.settings import ENCODING
+from server.settings import ENCODING, SERVER_LOGGER
 from server.models import check_user
 
 def get_unix_time_utf() -> float:
@@ -16,9 +16,12 @@ def read_msg(msg: bytes):
     try:
         jim = msg.decode(ENCODING)
         data = json.loads(jim)
+        SERVER_LOGGER.debug(f'msg: {str(msg)}, data: {str(data)}')
         return data
     except UnicodeDecodeError as err:
-        print(err)
+        # print(err)
+        SERVER_LOGGER.exception(f'exception: {err}')
+        # SERVER_LOGGER.exception()
 
 
 def send_msg(soc: socket, data: dict):
