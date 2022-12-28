@@ -20,11 +20,18 @@ SALT = b'\xf1\xccd7\xf1\x1dz\x8d\\\xa6/\x85\xf8\xb9-\x14\x1e\xed~\xa7\x92\n\x05\
 LOGGING_CONSOLE_LVL = 'CRITICAL'
 LOGGING_FILE_LVL = 'DEBUG'
 
+
 class UTCFormatter(logging.Formatter):
     """
     Форматер с конвертацией времени в UTC(GMT)
     """
     converter = time.gmtime
+
+
+class DecorFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        # record.funcName == 'wrapper'
+        return record.funcName == 'wrapper'
 
 
 logger_config = {
@@ -40,7 +47,12 @@ logger_config = {
             # 'format': '{asctime}:{levelname}:{name}:{message}',
             'format': '{asctime}::{levelname}::{name}::{module}::{funcName}::{message}',
             'style': '{'
-        }
+        },
+        'utc_format_decor': {
+            '()': UTCFormatter,
+            'format': '{asctime}::{message}',
+            'style': '{'
+        },
     },
     'handlers': {
         'console': {
@@ -61,6 +73,16 @@ logger_config = {
             'utc': True,
             'when': 'MIDNIGHT'
         },
+        'decor_log': {
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'level': LOGGING_FILE_LVL,
+            'filename': './logs/server_decor.log',
+            'formatter': 'utc_format_decor',
+            'encoding': ENCODING,
+            'utc': True,
+            'when': 'MIDNIGHT',
+            'filters': ['from_decor']
+        },
         # 'file1': {
         #     '()': MyHandler,
         #     'level': 'DEBUG',
@@ -74,10 +96,16 @@ logger_config = {
             'level': 'DEBUG',
             # 'level': 'NOTSET',
             # 'handlers': ['console', 'file'],
-            'handlers': ['file'],
+            'handlers': ['file', 'decor_log'],
             # 'propagate': False,
         }
     },
+
+    'filters': {
+        'from_decor': {
+            '()': DecorFilter
+        }
+    }
 
     # 'filters': {
     #     'new_filter': {

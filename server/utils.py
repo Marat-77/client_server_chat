@@ -3,7 +3,10 @@ from socket import socket
 import time
 from server.settings import ENCODING, SERVER_LOGGER
 from server.models import check_user
+from server.decorators import log
 
+
+@log
 def get_unix_time_utf() -> float:
     """
     текущее время UTC в формате unix timestamp
@@ -12,6 +15,7 @@ def get_unix_time_utf() -> float:
     return time.time() + time.altzone
 
 
+@log
 def read_msg(msg: bytes):
     try:
         jim = msg.decode(ENCODING)
@@ -24,11 +28,13 @@ def read_msg(msg: bytes):
         # SERVER_LOGGER.exception()
 
 
+@log
 def send_msg(soc: socket, data: dict):
     jim = json.dumps(data)
     soc.send(jim.encode(ENCODING))
 
 
+@log
 def probe_query():
     return {
         "action": "probe",
@@ -36,9 +42,12 @@ def probe_query():
     }
 
 
+@log
 def presence(data: dict):
     return data.get('user').get('account_name'), 'Ok'
 
+
+@log
 def check_auth(data: dict, auth_users: set):
     if data.get('account_name') in auth_users:
         response = {
@@ -63,6 +72,7 @@ def check_auth(data: dict, auth_users: set):
     return response, None
 
 
+@log
 def quit_user(user_data, auth_users: set):
     if user_data.get('account_name') in auth_users:
         return user_data.get('account_name')
