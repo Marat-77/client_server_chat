@@ -1,11 +1,13 @@
 import argparse
+import random
 from socket import socket, AF_INET, SOCK_STREAM
 import sys
 import time
 from typing import Tuple
 
 from client.settings import DEFAULT_PORT, MAX_PACKAGE_LENGTH, TIMEOUT, CLIENT_LOGGER
-from client.utils import presence_msg, send_msg, auth_user_msg, read_msg, quit_user_msg
+from client.utils import (presence_msg, send_msg, auth_user_msg,
+                          read_msg, quit_user_msg, message_msg)
 
 def get_settings() -> Tuple[str, int]:
     # вернуть кортеж address_port (addr, port)
@@ -55,7 +57,8 @@ def get_settings() -> Tuple[str, int]:
 
 
 # вариант с argparse
-def get_argparse_settings() -> Tuple[str, int]:
+def get_argparse_settings() -> Tuple[Tuple[str, int], str]:
+# def get_argparse_settings():
     parser = argparse.ArgumentParser(# prog='run_client',
                                      # prefix_chars='',
                                      description='Run client',
@@ -74,11 +77,19 @@ def get_argparse_settings() -> Tuple[str, int]:
                         default=DEFAULT_PORT,
                         metavar='<port>',
                         help='port 1024...65535 (default: %(default)s)')
+    parser.add_argument('-mode', type=str,
+                        # required=False,
+                        # required=True,
+                        dest='mode',
+                        default='reader',
+                        choices=['reader', 'writer'],
+                        metavar='<mode>',
+                        help='mode reader | writer (default: %(default)s)')
     args = parser.parse_args()
     if args.port < 1024 or args.port > 65535:
         print('введите значение port в диапазоне 1024...65535')
         exit(1)
-    return args.addr, args.port
+    return (args.addr, args.port), args.mode
 
 
 def create_connection(address_port: Tuple[str, int]):
@@ -150,11 +161,67 @@ def create_connection(address_port: Tuple[str, int]):
     finally:
         s.close()
 
+def client_reader(address_port):
+    # Создать сокет TCP
+    s = socket(AF_INET, SOCK_STREAM)
+    s.settimeout(TIMEOUT)
+    try:
+        s.connect(address_port)
+        CLIENT_LOGGER.debug(f'Соединение с {address_port} установлено')
+        while True:
+            # Получаем сообщение от сервера:
+            income_data = s.recv(MAX_PACKAGE_LENGTH)
+            if income_data:
+                # print('is income_data')
+                # print(f'1/income_data: {income_data}')
+                CLIENT_LOGGER.debug(f'income_data: {income_data}')
+                data = read_msg(income_data)
+                print('data:\n', data)
+
+    except ConnectionRefusedError as err:
+        CLIENT_LOGGER.exception(f'exception: {err}')
+        # [Errno 111] Connection refused
+    except TimeoutError as err:
+        CLIENT_LOGGER.exception(f'exception: {err}')
+        # timed out
+    finally:
+        s.close()
+
+
+def client_writer(address_port):
+    # Создать сокет TCP
+    s = socket(AF_INET, SOCK_STREAM)
+    s.settimeout(TIMEOUT)
+    messages = ['Всем привет!', 'Hi all!']
+    try:
+        s.connect(address_port)
+        CLIENT_LOGGER.debug(f'Соединение с {address_port} установлено')
+        while True:
+            # отправляем message:
+            rnd_msg = random.choice(messages)
+            msg = message_msg('user', rnd_msg)
+            send_msg(s, msg)
+
+    except ConnectionRefusedError as err:
+        CLIENT_LOGGER.exception(f'exception: {err}')
+        # [Errno 111] Connection refused
+    except TimeoutError as err:
+        CLIENT_LOGGER.exception(f'exception: {err}')
+        # timed out
+    finally:
+        s.close()
+
 
 def main():
-    address_port = get_settings()
+    # address_port = get_settings()
+    address_port, mode = get_argparse_settings()
     print(address_port)
-    create_connection(address_port)
+    print(mode)
+    # create_connection(address_port)
+    if mode == 'reader':
+        client_reader(address_port)
+    elif mode == 'writer':
+        client_writer(address_port)
 
 
 if __name__ == '__main__':

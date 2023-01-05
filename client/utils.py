@@ -72,3 +72,12 @@ def quit_user_msg(user: str):
         "time": get_unix_time_utf(),
         "user": {"account_name": user}
     }
+
+
+def message_msg(user: str, message: str) -> dict:
+    return {
+        "action": "msg",
+        "time": get_unix_time_utf(),
+        "message": message,
+        "user": {"account_name": user}
+    }
