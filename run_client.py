@@ -1,7 +1,9 @@
 import argparse
+import concurrent.futures
 import random
 from socket import socket, AF_INET, SOCK_STREAM
 import sys
+from threading import Event
 import time
 from typing import Tuple
 
@@ -10,6 +12,8 @@ from client.utils import (presence_msg, send_msg, auth_user_msg,
                           read_msg, quit_user_msg, message_msg)
 
 def get_settings() -> Tuple[str, int]:
+    # deprecated
+
     # вернуть кортеж address_port (addr, port)
     arg_lst = sys.argv
     usage_msg = 'usage: run_client.py <address> [<port>]\n'
@@ -58,7 +62,6 @@ def get_settings() -> Tuple[str, int]:
 
 # вариант с argparse
 def get_argparse_settings() -> Tuple[Tuple[str, int], str]:
-# def get_argparse_settings():
     parser = argparse.ArgumentParser(# prog='run_client',
                                      # prefix_chars='',
                                      description='Run client',
@@ -77,151 +80,92 @@ def get_argparse_settings() -> Tuple[Tuple[str, int], str]:
                         default=DEFAULT_PORT,
                         metavar='<port>',
                         help='port 1024...65535 (default: %(default)s)')
-    parser.add_argument('-mode', type=str,
-                        # required=False,
-                        # required=True,
-                        dest='mode',
-                        default='reader',
-                        choices=['reader', 'writer'],
-                        metavar='<mode>',
-                        help='mode reader | writer (default: %(default)s)')
+    # deprecated
+    # parser.add_argument('-mode', type=str,
+    #                     # required=False,
+    #                     # required=True,
+    #                     dest='mode',
+    #                     default='reader',
+    #                     choices=['reader', 'writer'],
+    #                     metavar='<mode>',
+    #                     help='mode reader | writer (default: %(default)s)')
     args = parser.parse_args()
     if args.port < 1024 or args.port > 65535:
         print('введите значение port в диапазоне 1024...65535')
         exit(1)
-    return (args.addr, args.port), args.mode
+    return args.addr, args.port
 
 
-def create_connection(address_port: Tuple[str, int]):
+def create_connection(address_port: Tuple[str, int]) -> socket:
     # Создать сокет TCP
     s = socket(AF_INET, SOCK_STREAM)
     s.settimeout(TIMEOUT)
     try:
         s.connect(address_port)
         CLIENT_LOGGER.debug(f'Соединение с {address_port} установлено')
+        return s
+    except ConnectionRefusedError as err:
+        # print(err)
+        CLIENT_LOGGER.exception(f'exception: {err}')
+        # [Errno 111] Connection refused
+    except TimeoutError as err:
+        # print(err)
+        CLIENT_LOGGER.exception(f'exception: {err}')
+        # timed out
+    # finally:
+    #     s.close()
 
-        # Пишем сообщение серверу:
-
-        # пробуем авторизоваться:
-
-        # # 1 неверный пользователь
-        # wrong_user = 'wrong'
-        # wrong_password = '12345678'
-        # auth_msg = auth_user_msg(wrong_user, wrong_password)
-        # send_msg(s, auth_msg)
-        # # Получаем сообщение от сервера:
-        # income_data = s.recv(MAX_PACKAGE_LENGTH)
-        # data = read_msg(income_data)
-        #
-        # # 2 неверный пароль
-        # user = 'user1'
-        # wrong_password = '12345678'
-        # auth_msg = auth_user_msg(user, wrong_password)
-        # send_msg(s, auth_msg)
-        # # Получаем сообщение от сервера:
-        # income_data = s.recv(MAX_PACKAGE_LENGTH)
-        # data = read_msg(income_data)
-
-        # 3 верный пользователь и пароль
-        user = 'user1'
-        password = 'mypasword123'
-        auth_msg = auth_user_msg(user, password)
-        send_msg(s, auth_msg)
-
+def client_reader(s: socket, event: Event):
+    while True:
+        if event.is_set():
+            break
         # Получаем сообщение от сервера:
         income_data = s.recv(MAX_PACKAGE_LENGTH)
-        # print(income_data)
-        # print(len(income_data))
         if income_data:
-            # print('is income_data')
-            # print(f'1/income_data: {income_data}')
             CLIENT_LOGGER.debug(f'income_data: {income_data}')
             data = read_msg(income_data)
             print('data:\n', data)
+
+
+def client_writer(s: socket, message):
+    # отправляем message:
+    msg = message_msg('user', message)
+    send_msg(s, msg)
+
+def user_msg():
+    message = input('Input message: ')
+    return message
+
+
+def user_input(s: socket):
+    while True:
+        user_choice = input('Input "1" to write message, "q" to exit: ')
+        if user_choice == '1':
+            msg = user_msg()
+            print(msg)
+            client_writer(s, msg)
+        elif user_choice == 'q':
+            print('Exit')
+            break
         else:
-            print('NOT income_data')
-
-        # отправляем presence:
-        msg = presence_msg(user)
-        send_msg(s, msg)
-        time.sleep(1)
-
-        # отправляем quit
-        msg = quit_user_msg(user)
-        send_msg(s, msg)
-
-    except ConnectionRefusedError as err:
-        # print(err)
-        CLIENT_LOGGER.exception(f'exception: {err}')
-        # [Errno 111] Connection refused
-    except TimeoutError as err:
-        # print(err)
-        CLIENT_LOGGER.exception(f'exception: {err}')
-        # timed out
-    finally:
-        s.close()
-
-def client_reader(address_port):
-    # Создать сокет TCP
-    s = socket(AF_INET, SOCK_STREAM)
-    s.settimeout(TIMEOUT)
-    try:
-        s.connect(address_port)
-        CLIENT_LOGGER.debug(f'Соединение с {address_port} установлено')
-        while True:
-            # Получаем сообщение от сервера:
-            income_data = s.recv(MAX_PACKAGE_LENGTH)
-            if income_data:
-                # print('is income_data')
-                # print(f'1/income_data: {income_data}')
-                CLIENT_LOGGER.debug(f'income_data: {income_data}')
-                data = read_msg(income_data)
-                print('data:\n', data)
-
-    except ConnectionRefusedError as err:
-        CLIENT_LOGGER.exception(f'exception: {err}')
-        # [Errno 111] Connection refused
-    except TimeoutError as err:
-        CLIENT_LOGGER.exception(f'exception: {err}')
-        # timed out
-    finally:
-        s.close()
-
-
-def client_writer(address_port):
-    # Создать сокет TCP
-    s = socket(AF_INET, SOCK_STREAM)
-    s.settimeout(TIMEOUT)
-    messages = ['Всем привет!', 'Hi all!']
-    try:
-        s.connect(address_port)
-        CLIENT_LOGGER.debug(f'Соединение с {address_port} установлено')
-        while True:
-            # отправляем message:
-            rnd_msg = random.choice(messages)
-            msg = message_msg('user', rnd_msg)
-            send_msg(s, msg)
-
-    except ConnectionRefusedError as err:
-        CLIENT_LOGGER.exception(f'exception: {err}')
-        # [Errno 111] Connection refused
-    except TimeoutError as err:
-        CLIENT_LOGGER.exception(f'exception: {err}')
-        # timed out
-    finally:
-        s.close()
-
+            print('Repeat input')
+    return True
 
 def main():
-    # address_port = get_settings()
-    address_port, mode = get_argparse_settings()
+    address_port = ('127.0.0.1', 7777)
     print(address_port)
-    print(mode)
-    # create_connection(address_port)
-    if mode == 'reader':
-        client_reader(address_port)
-    elif mode == 'writer':
-        client_writer(address_port)
+    sock = create_connection(address_port)
+    print(sock)
+    if not sock:
+        print('exit')
+        exit()
+    event = Event()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        f1 = executor.submit(client_reader, sock, event)
+        f2 = executor.submit(user_input, sock)
+        if f2.result() is True:
+            event.set()
+            print('---exit---')
 
 
 if __name__ == '__main__':
